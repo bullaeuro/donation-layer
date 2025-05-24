@@ -7,13 +7,10 @@ from flask_cors import CORS
 from gtts import gTTS
 from solana.rpc.api import Client
 from solders.pubkey import Pubkey
+from threading import Thread
 
 app = Flask(__name__)
 CORS(app)
-
-@app.route('/static/<path:filename>')
-def static_files(filename):
-    return send_from_directory('static', filename)
 
 SOUNDS_DIR = os.path.join("static", "sounds")
 os.makedirs(SOUNDS_DIR, exist_ok=True)
@@ -46,11 +43,9 @@ def monitor_wallet():
                 amount = 0
 
                 for ix in instructions:
-                    print("📦 INSTRUCTION DUMP:", ix)
                     if hasattr(ix, "program") and ix.program == "spl-memo":
                         if hasattr(ix, "parsed") and isinstance(ix.parsed, str):
                             memo = ix.parsed
-
                     if hasattr(ix, "program") and ix.program == "system":
                         if hasattr(ix, "parsed") and isinstance(ix.parsed, dict):
                             if ix.parsed.get("type") == "transfer":
@@ -60,38 +55,42 @@ def monitor_wallet():
                                 except:
                                     amount = 0
 
-                print(f"📓 Signature: {sig}")
-                print(f"📜 Memo: {memo}")
-                print(f"💰 Amount: {amount}")
-
                 if memo and amount >= 1000000:
-                    readable = memo
-                    safe_memo = re.sub(r'[^a-zA-Z0-9._-]', '_', readable.replace(" ", "_"))
-                    filename = f"tts_{int(time.time())}__{safe_memo}.mp3"
+                    # Memo w formacie: "user message"
+                    parts = memo.split(" ", 1)
+                    if len(parts) == 2:
+                        user, message_text = parts
+                    else:
+                        user = "anonymous"
+                        message_text = memo
+
+                    sol_amount = round(amount / 1e9, 4)
+                    tts_text = f"{sol_amount} SOL {user} says {message_text}"
+                    safe_user = re.sub(r'[^a-zA-Z0-9._-]', '_', user)
+                    safe_msg = re.sub(r'[^a-zA-Z0-9._-]', '_', message_text)
+                    filename = f"{sol_amount}_SOL_{safe_user}_says_{safe_msg}_{int(time.time())}.mp3"
                     path = os.path.join(SOUNDS_DIR, filename)
-                    print(f"🔊 New donation with memo: {readable}")
 
                     try:
-                        tts = gTTS(text=readable, lang='en')
+                        tts = gTTS(text=tts_text, lang='en')
                         tts.save(path)
-
-                        with open(LATEST_JSON, "w", encoding="utf-8") as f:
-                            json.dump({"filename": filename, "text": readable}, f, ensure_ascii=False)
-
-                        print(f"💾 Saved latest.json with: {readable}")
+                        print(f"💾 Saved TTS: {filename}")
                     except Exception as e:
-                        print("❌ Failed to save TTS or latest.json:", e)
+                        print("❌ Failed to save TTS:", e)
                         continue
+
+                    # Zapisz ostatni donation do latest.json (to obsługuje frontend)
+                    with open(LATEST_JSON, "w", encoding="utf-8") as f:
+                        json.dump({"filename": filename, "text": tts_text}, f, ensure_ascii=False)
 
             time.sleep(5)
         except Exception as e:
             print("⚠️ Error:", repr(e))
             time.sleep(5)
 
-@app.route("/sounds")
-def list_sounds():
-    files = sorted(f for f in os.listdir(SOUNDS_DIR) if f.endswith(".mp3"))
-    return jsonify(files)
+@app.route("/static/<path:filename>")
+def static_files(filename):
+    return send_from_directory('static', filename)
 
 @app.route("/sounds/<filename>")
 def serve_sound(filename):
@@ -109,7 +108,6 @@ def home():
     return send_from_directory("static", "donation_player.html")
 
 if __name__ == "__main__":
-    from threading import Thread
     Thread(target=monitor_wallet, daemon=True).start()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
