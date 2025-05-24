@@ -4,4 +4,3 @@ gTTS
 solana==0.36.6
 solders==0.26.0
 requests
-playsound
