@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: solana-tts-donations
+    env: python
+    plan: free
+    buildCommand: ""
+    startCommand: "python solana_tts_donations.py"

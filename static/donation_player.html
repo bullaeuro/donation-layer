@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Donation Player</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    body {
+      margin: 0;
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Arial', sans-serif;
+    }
+    #enable-audio {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  
+  <div id="container">
+    <img src="/static/donation.gif" id="donation-gif" />
+    <div id="donation-text"></div>
+  </div>
+
+  <audio id="donation-audio" autoplay muted playsinline></audio>
+
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      audio.muted = false;
+      audio.play().catch(err => console.warn("Autoplay failed:", err));
+    });
+
+    let lastFilename = null;
+    const audio = document.getElementById("donation-audio");
+    
+    
+    async function fetchAndPlay() {
+      try {
+        const res = await fetch("/latest_donation");
+        const data = await res.json();
+        if (!data.filename || data.filename === lastFilename) return;
+
+        lastFilename = data.filename;
+
+        audio.src = "/sounds/" + data.filename;
+        audio.load();
+        audio.volume = 1.0;
+
+        try {
+          await audio.play();
+          console.log("Audio played");
+        } catch (err) {
+          console.warn("Autoplay failed:", err.message);
+        }
+
+        // remove ellipses if present
+        const cleanText = (data.text || "").replace(/\.\.\./g, "");
+        document.getElementById("donation-text").innerText = cleanText.trim() || "New donation!";
+        document.getElementById("container").classList.add("show");
+
+        setTimeout(() => {
+          document.getElementById("container").classList.remove("show");
+        }, 8000);
+      } catch (e) {
+        console.error("Fetch or playback error", e);
+      }
+    }
+
+    setInterval(fetchAndPlay, 3000);
+  </script>
+</body>
+</html>
