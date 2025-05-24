@@ -2,82 +2,129 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Donation Player</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <title>Donation TTS</title>
   <style>
     body {
-      margin: 0;
       background: transparent;
+      margin: 0;
       overflow: hidden;
-      font-family: 'Arial', sans-serif;
     }
-    #enable-audio {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      background: #fff;
-      color: #000;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-      z-index: 999;
+    #container {
+      position: fixed;
+      top: 5%;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 20px 30px;
+      font-size: 28px;
+      font-family: Arial, sans-serif;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      display: none;
+      z-index: 9999;
+    }
+    #container img {
+      height: 80px;
     }
   </style>
 </head>
 <body>
-  
   <div id="container">
-    <img src="/static/donation.gif" id="donation-gif" />
-    <div id="donation-text"></div>
+    <img src="/static/animation.gif" alt="donation gif" />
+    <span id="donation-text">Dzięki!</span>
   </div>
-
-  <audio id="donation-audio" autoplay muted playsinline></audio>
+  <audio id="donation-audio"></audio>
 
   <script>
-    window.addEventListener("DOMContentLoaded", () => {
-      audio.muted = false;
-      audio.play().catch(err => console.warn("Autoplay failed:", err));
-    });
+    let donationQueue = [];
+    let lastSeenIndex = 0;
+    let isPlaying = false;
 
-    let lastFilename = null;
+    const container = document.getElementById("container");
+    const text = document.getElementById("donation-text");
     const audio = document.getElementById("donation-audio");
-    
-    
-    async function fetchAndPlay() {
+
+    // Na starcie pobieramy długość kolejki i nie gramy starych donejtów
+    async function fetchInitialQueueLength() {
       try {
-        const res = await fetch("/latest_donation");
+        const res = await fetch("/queue.json");
         const data = await res.json();
-        if (!data.filename || data.filename === lastFilename) return;
-
-        lastFilename = data.filename;
-
-        audio.src = "/sounds/" + data.filename;
-        audio.load();
-        audio.volume = 1.0;
-
-        try {
-          await audio.play();
-          console.log("Audio played");
-        } catch (err) {
-          console.warn("Autoplay failed:", err.message);
+        if (Array.isArray(data)) {
+          lastSeenIndex = data.length;
         }
+      } catch (e) {}
+    }
 
-        // remove ellipses if present
-        const cleanText = (data.text || "").replace(/\.\.\./g, "");
-        document.getElementById("donation-text").innerText = cleanText.trim() || "New donation!";
-        document.getElementById("container").classList.add("show");
+    fetchInitialQueueLength();
 
-        setTimeout(() => {
-          document.getElementById("container").classList.remove("show");
-        }, 8000);
-      } catch (e) {
-        console.error("Fetch or playback error", e);
+    async function fetchDonations() {
+      try {
+        const res = await fetch("/queue.json");
+        const data = await res.json();
+        if (!Array.isArray(data)) return;
+        if (data.length < lastSeenIndex) {
+          lastSeenIndex = data.length;
+        }
+        // Dodaj tylko nowe donejty
+        if (data.length > lastSeenIndex) {
+          for (let i = lastSeenIndex; i < data.length; i++) {
+            donationQueue.push(data[i]);
+          }
+          lastSeenIndex = data.length;
+          // Zacznij odtwarzać jeśli nic nie gra
+          if (!isPlaying) playNext();
+        }
+      } catch (err) {
+        console.error("❌ Fetch error:", err);
       }
     }
 
-    setInterval(fetchAndPlay, 3000);
+    setInterval(fetchDonations, 3000);
+
+    function playNext() {
+      if (donationQueue.length === 0) {
+        isPlaying = false;
+        container.style.display = "none";
+        return;
+      }
+      const next = donationQueue.shift();
+      isPlaying = true;
+
+      text.textContent = next.text || "Dzięki!";
+      container.style.display = "flex";
+      audio.src = "/static/sounds/" + next.audio;
+      audio.load();
+      audio.play().catch(err => {
+        console.error("Audio play error:", err);
+        isPlaying = false;
+        container.style.display = "none";
+        setTimeout(playNext, 500);
+      });
+
+      audio.onended = () => {
+        isPlaying = false;
+        container.style.display = "none";
+        setTimeout(playNext, 500);
+      };
+    }
+
+    // --- audio unlock workaround ---
+    function unlockAudio() {
+      const emptyAudio = new Audio();
+      emptyAudio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+      emptyAudio.play().catch(() => {});
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+      window.removeEventListener('scroll', unlockAudio);
+      console.log("🔓 Audio odblokowane!");
+    }
+
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('keydown', unlockAudio);
+    window.addEventListener('scroll', unlockAudio);
   </script>
 </body>
 </html>
