@@ -56,16 +56,16 @@ def monitor_wallet():
                                     amount = 0
 
                 if memo and amount >= 1000000:
-                    # --- Poprawione formatowanie memo ---
                     cleaned_memo = memo.strip()
-                    # Usuń "kwota SOL", "says", kropki z początku
-                    cleaned_memo = re.sub(r'^(\d+(\.\d+)?\s*SOL[\.]*\s*)+', '', cleaned_memo, flags=re.IGNORECASE)
-                    cleaned_memo = re.sub(r'^says[\.]*\s*', '', cleaned_memo, flags=re.IGNORECASE)
-                    cleaned_memo = re.sub(r'^[\.\s]+', '', cleaned_memo).strip()
-                    # Rozbij na user i message
-                    parts = cleaned_memo.split(" ", 1)
-                    if len(parts) == 2:
-                        user, message_text = parts
+
+                    # --- Kluczowa poprawka: wyciągnij usera i message po pierwszym "says", pomiń "kwota SOL" i kropki ---
+                    match = re.split(r"\s*says\s*\.{0,}", cleaned_memo, maxsplit=1, flags=re.IGNORECASE)
+                    if len(match) == 2:
+                        user = match[0].strip(" .")
+                        message_text = match[1].strip(" .")
+                        # Usuń kwotę, SOL i śmieci z usera (tylko na początku)
+                        user = re.sub(r"^[\d\.,\s]*SOL[\s\.,]*", "", user, flags=re.IGNORECASE)
+                        user = user.strip(" .")
                     else:
                         user = "anonymous"
                         message_text = cleaned_memo
