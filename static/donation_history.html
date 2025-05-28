@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Historia Donacji</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    body { background: #111; color: #fff; padding: 30px; }
+    .donation-row {
+      display: flex; align-items: center; margin-bottom: 16px;
+      background: rgba(255,255,255,0.08); border-radius: 12px; padding: 10px 16px;
+    }
+    .donation-row .amount { min-width: 60px; text-align: right; margin-right: 18px; font-weight: bold; }
+    .donation-row .text { flex: 1; margin-right: 16px; }
+    .donation-row button {
+      background: #21d07a; color: #fff; border: none; padding: 8px 16px;
+      border-radius: 8px; cursor: pointer; font-size: 16px; transition: background 0.2s;
+    }
+    .donation-row button:hover { background: #16a363; }
+    .donator { font-weight: bold; }
+    .date { color: #aaa; font-size: 13px; margin-top: 2px; display: block; }
+  </style>
+</head>
+<body>
+  <h1>Historia Donacji</h1>
+  <div id="donations-list"></div>
+  <audio id="player" controls style="margin-top:30px;width:100%"></audio>
+
+  <script>
+    async function loadDonations() {
+      const res = await fetch('/donations');
+      const data = await res.json();
+      const list = document.getElementById('donations-list');
+      list.innerHTML = "";
+
+      data.forEach(donation => {
+        const row = document.createElement('div');
+        row.className = 'donation-row';
+
+        row.innerHTML = `
+          <span class="amount">${donation.amount || ""} SOL</span>
+          <span class="text">
+            <span class="donator">${donation.user || "anon"}</span>: ${donation.text || ""}
+            <span class="date">${donation.date || ""}</span>
+          </span>
+          <button>Play</button>
+        `;
+
+        row.querySelector('button').onclick = () => {
+          const player = document.getElementById('player');
+          player.src = '/sounds/' + donation.filename;
+          player.play();
+        };
+        list.appendChild(row);
+      });
+    }
+
+    loadDonations();
+  </script>
+</body>
+</html>

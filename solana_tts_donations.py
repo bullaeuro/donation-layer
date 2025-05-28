@@ -2,6 +2,7 @@ import os
 import time
 import re
 import json
+import datetime
 from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
 from gtts import gTTS
@@ -112,6 +113,40 @@ def latest_donation():
 @app.route("/")
 def home():
     return send_from_directory("static", "donation_player.html")
+
+# ---- TU JEST NOWY ENDPOINT /donations ----
+@app.route('/donations')
+def donations():
+    donations = []
+    if os.path.isdir(SOUNDS_DIR):
+        for filename in sorted(os.listdir(SOUNDS_DIR), reverse=True):
+            if filename.endswith('.mp3'):
+                name = filename[:-4]  # bez '.mp3'
+                # Parsuj dane z nazwy pliku
+                match = re.match(r"([0-9.]+)_SOL_(.+)_says_(.+)_(\d+)", name)
+                if match:
+                    sol_amount = match.group(1)
+                    user = match.group(2).replace('_', ' ')
+                    message = match.group(3).replace('_', ' ')
+                    timestamp = int(match.group(4))
+                    date_str = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    sol_amount = ""
+                    user = ""
+                    message = name
+                    timestamp = 0
+                    date_str = ""
+
+                donations.append({
+                    "filename": filename,
+                    "amount": sol_amount,
+                    "user": user,
+                    "text": message,
+                    "timestamp": timestamp,
+                    "date": date_str,
+                })
+    return jsonify(donations)
+# ---- KONIEC NOWEGO ENDPOINTU ----
 
 if __name__ == "__main__":
     Thread(target=monitor_wallet, daemon=True).start()
