@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <title>Historia Donacji</title>
+  <title>Donation History</title>
   <link rel="stylesheet" href="/static/style.css" />
   <style>
     body { background: #111; color: #fff; padding: 30px; }
@@ -23,17 +23,39 @@
 </head>
 <body>
   <h1>Historia Donacji</h1>
+  <div style="margin-bottom:24px;">
+    <label>Sortuj: </label>
+    <select id="sortSelect">
+      <option value="date_desc">Newest</option>
+      <option value="date_asc">Oldest</option>
+      <option value="amount_desc">Biggest donations</option>
+      <option value="amount_asc">Smaller donations</option>
+    </select>
+  </div>
   <div id="donations-list"></div>
   <audio id="player" controls style="margin-top:30px;width:100%"></audio>
 
   <script>
-    async function loadDonations() {
-      const res = await fetch('/donations');
-      const data = await res.json();
+    let donationsData = [];
+
+    function renderDonations() {
+      const sort = document.getElementById('sortSelect').value;
+      let sorted = [...donationsData];
+
+      if (sort === "date_desc") {
+        sorted.sort((a, b) => b.timestamp - a.timestamp);
+      } else if (sort === "date_asc") {
+        sorted.sort((a, b) => a.timestamp - b.timestamp);
+      } else if (sort === "amount_desc") {
+        sorted.sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount));
+      } else if (sort === "amount_asc") {
+        sorted.sort((a, b) => parseFloat(a.amount) - parseFloat(b.amount));
+      }
+
       const list = document.getElementById('donations-list');
       list.innerHTML = "";
 
-      data.forEach(donation => {
+      sorted.forEach(donation => {
         const row = document.createElement('div');
         row.className = 'donation-row';
 
@@ -55,7 +77,16 @@
       });
     }
 
-    loadDonations();
+    async function loadDonations() {
+      const res = await fetch('/donations');
+      donationsData = await res.json();
+      renderDonations();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDonations();
+      document.getElementById('sortSelect').addEventListener('change', renderDonations);
+    });
   </script>
 </body>
 </html>
