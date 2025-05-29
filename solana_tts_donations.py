@@ -144,6 +144,16 @@ def donations():
     return jsonify(donations)
 # ---- KONIEC POPRAWIONEGO ENDPOINTU ----
 
+# ---- ENDPOINT DO USUWANIA WSZYSTKICH MP3 ----
+@app.route('/delete_all_mp3')
+def delete_all_mp3():
+    import glob
+    files = glob.glob(os.path.join(SOUNDS_DIR, '*.mp3'))
+    for f in files:
+        os.remove(f)
+    return jsonify({"status": "deleted", "count": len(files)})
+# ---- KONIEC ENDPOINTU ----
+
 if __name__ == "__main__":
     Thread(target=monitor_wallet, daemon=True).start()
     port = int(os.environ.get("PORT", 5000))
