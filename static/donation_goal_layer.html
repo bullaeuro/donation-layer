@@ -36,31 +36,36 @@
     <div class="goal-text" id="goal-text"></div>
   </div>
   <script>
-    let currentGoal = {amount:0,desc:""};
+    let currentGoal = { amount: 0, desc: "", reset_timestamp: 0 };
     let currentSum = 0;
 
     async function updateGoal() {
-      // Get goal
-      const g = await fetch('/donation_goal').then(res=>res.json());
+      // Get goal and reset timestamp
+      const g = await fetch('/donation_goal').then(res => res.json());
       currentGoal = g;
 
-      // Get donations
-      const d = await fetch('/donations').then(res=>res.json());
+      // Get all donations
+      const d = await fetch('/donations').then(res => res.json());
+
+      // Sum only donations after reset_timestamp
       let sum = 0;
+      const since = currentGoal.reset_timestamp || 0;
       d.forEach(dd => {
-        if(dd.amount) sum += parseFloat(dd.amount);
+        if (dd.timestamp >= since && dd.amount) {
+          sum += parseFloat(dd.amount);
+        }
       });
       currentSum = sum;
 
-      // Calculate progress
+      // Calculate and render progress
       let fill = document.getElementById('fill');
       let text = document.getElementById('goal-text');
       let percent = 0;
-      if(currentGoal.amount > 0) {
-        percent = Math.min(100, Math.round(100*currentSum/currentGoal.amount));
+      if (currentGoal.amount > 0) {
+        percent = Math.min(100, Math.round(100 * currentSum / currentGoal.amount));
       }
-      fill.style.width = percent+"%";
-      text.textContent = `${currentSum.toFixed(3)} / ${currentGoal.amount} SOL${currentGoal.desc?(" for "+currentGoal.desc):""}`;
+      fill.style.width = percent + "%";
+      text.textContent = `${currentSum.toFixed(3)} / ${currentGoal.amount} SOL${currentGoal.desc ? " for " + currentGoal.desc : ""}`;
     }
 
     updateGoal();

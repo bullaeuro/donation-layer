@@ -23,6 +23,7 @@ client = Client("https://mainnet.helius-rpc.com/?api-key=e47fb6f4-d046-4ef2-af41
 seen_signatures = set()
 
 def monitor_wallet():
+    # continuously poll for new transactions
     while True:
         try:
             print("🔍 Checking for new transactions...")
@@ -60,11 +61,12 @@ def monitor_wallet():
                 if memo and amount >= 1000000:
                     cleaned_memo = memo.strip()
 
-                    # Extract username and message after first "says", skip SOL amount and dots.
+                    # extract username and message after first "says"
                     match = re.split(r"\s*says\s*\.{0,}", cleaned_memo, maxsplit=1, flags=re.IGNORECASE)
                     if len(match) == 2:
                         user = match[0].strip(" .")
                         message_text = match[1].strip(" .")
+                        # remove SOL amount from user prefix
                         user = re.sub(r"^[\d\.,\s]*SOL[\s\.,]*", "", user, flags=re.IGNORECASE)
                         user = user.strip(" .")
                     else:
@@ -86,6 +88,7 @@ def monitor_wallet():
                         print("❌ Failed to save TTS:", e)
                         continue
 
+                    # update latest donation JSON
                     with open(LATEST_JSON, "w", encoding="utf-8") as f:
                         json.dump({"filename": filename, "text": tts_text}, f, ensure_ascii=False)
 
@@ -159,31 +162,40 @@ def donation_goal():
         data = request.json
         try:
             goal_amount = float(data.get("amount", 0))
-            goal_desc = data.get("desc", "")
-        except Exception:
+            goal_desc   = data.get("desc", "")
+        except:
             return jsonify({"status": "error", "msg": "Invalid input"}), 400
+        goal = {
+            "amount": goal_amount,
+            "desc": goal_desc,
+            "reset_timestamp": int(time.time())
+        }
         with open(GOAL_JSON, "w", encoding="utf-8") as f:
-            json.dump({"amount": goal_amount, "desc": goal_desc}, f, ensure_ascii=False)
+            json.dump(goal, f, ensure_ascii=False)
         return jsonify({"status": "ok"})
     else:
         if os.path.exists(GOAL_JSON):
             with open(GOAL_JSON, "r", encoding="utf-8") as f:
                 return jsonify(json.load(f))
-        return jsonify({"amount": 0, "desc": ""})
+        return jsonify({"amount": 0, "desc": "", "reset_timestamp": 0})
 # ---- END DONATION GOAL ENDPOINT ----
 
 # ---- RESET DONATION PROGRESS ENDPOINT ----
 @app.route('/reset_donation_goal', methods=['POST'])
 def reset_donation_goal():
+    now_ts = int(time.time())
     if os.path.exists(GOAL_JSON):
         try:
-            with open(GOAL_JSON, "r", encoding="utf-8") as f:
-                goal = json.load(f)
+            goal = json.load(open(GOAL_JSON, "r", encoding="utf-8"))
         except:
-            goal = {"amount": 0, "desc": ""}
+            goal = {}
     else:
-        goal = {"amount": 0, "desc": ""}
-    goal['progress'] = 0
+        goal = {}
+    goal = {
+        "amount": goal.get("amount", 0),
+        "desc":   goal.get("desc", ""),
+        "reset_timestamp": now_ts
+    }
     with open(GOAL_JSON, "w", encoding="utf-8") as f:
         json.dump(goal, f, ensure_ascii=False)
     return jsonify({"status": "reset", "goal": goal})
