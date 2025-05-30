@@ -3,7 +3,7 @@ import time
 import re
 import json
 import datetime
-from flask import Flask, send_from_directory, jsonify, request   # <-- dopisz 'request' tutaj!
+from flask import Flask, send_from_directory, jsonify, request
 from flask_cors import CORS
 from gtts import gTTS
 from solana.rpc.api import Client
@@ -16,7 +16,7 @@ CORS(app)
 SOUNDS_DIR = os.path.join("static", "sounds")
 os.makedirs(SOUNDS_DIR, exist_ok=True)
 LATEST_JSON = os.path.join(SOUNDS_DIR, "latest.json")
-GOAL_JSON = os.path.join("static", "goal.json")  # <-- tutaj dodaj
+GOAL_JSON = os.path.join("static", "goal.json")
 
 WALLET_ADDRESS = Pubkey.from_string("C4DxRkRkFYrNRrM7v1gySrFNonBhKjHM4Cp7YYNtruYo")
 client = Client("https://mainnet.helius-rpc.com/?api-key=e47fb6f4-d046-4ef2-af41-85617d529986")
@@ -65,7 +65,6 @@ def monitor_wallet():
                     if len(match) == 2:
                         user = match[0].strip(" .")
                         message_text = match[1].strip(" .")
-                        # Remove SOL amount and garbage from username (only at the start)
                         user = re.sub(r"^[\d\.,\s]*SOL[\s\.,]*", "", user, flags=re.IGNORECASE)
                         user = user.strip(" .")
                     else:
@@ -87,7 +86,6 @@ def monitor_wallet():
                         print("❌ Failed to save TTS:", e)
                         continue
 
-                    # Save the last donation to latest.json (used by the frontend)
                     with open(LATEST_JSON, "w", encoding="utf-8") as f:
                         json.dump({"filename": filename, "text": tts_text}, f, ensure_ascii=False)
 
@@ -124,7 +122,6 @@ def donations():
             if not filename.endswith('.mp3'):
                 continue
             name = filename[:-4]
-            # Accept ONLY files matching {amount}_SOL_{user}_says_{message}_{timestamp}.mp3
             match = re.match(r"^([0-9.]+)_SOL_(.+)_says_(.+)_(\d+)$", name)
             if not match:
                 continue
@@ -175,8 +172,24 @@ def donation_goal():
         return jsonify({"amount": 0, "desc": ""})
 # ---- END DONATION GOAL ENDPOINT ----
 
+# ---- RESET DONATION PROGRESS ENDPOINT ----
+@app.route('/reset_donation_goal', methods=['POST'])
+def reset_donation_goal():
+    if os.path.exists(GOAL_JSON):
+        try:
+            with open(GOAL_JSON, "r", encoding="utf-8") as f:
+                goal = json.load(f)
+        except:
+            goal = {"amount": 0, "desc": ""}
+    else:
+        goal = {"amount": 0, "desc": ""}
+    goal['progress'] = 0
+    with open(GOAL_JSON, "w", encoding="utf-8") as f:
+        json.dump(goal, f, ensure_ascii=False)
+    return jsonify({"status": "reset", "goal": goal})
+# ---- END RESET DONATION PROGRESS ENDPOINT ----
+
 if __name__ == "__main__":
-    # Always run monitor_wallet only once (no matter debug/reloader state)
     Thread(target=monitor_wallet, daemon=True).start()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)

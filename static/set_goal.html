@@ -8,8 +8,11 @@
     body { background: #181818; color: #fff; font-family: sans-serif; padding: 50px; }
     .goal-box { max-width: 400px; margin:auto; background:rgba(255,255,255,0.08); border-radius:16px; padding:32px; }
     input, textarea { width: 100%; margin-top: 10px; margin-bottom: 20px; border-radius: 8px; border: none; padding: 10px; font-size: 18px;}
-    button { padding: 12px 24px; font-size: 20px; border-radius: 8px; background: #21d07a; color: #fff; border: none; cursor:pointer;}
-    button:active { background:#159a53; }
+    .btn { padding: 12px 24px; font-size: 20px; border-radius: 8px; color: #fff; border: none; cursor:pointer;}
+    .btn-set { background: #21d07a; }
+    .btn-set:active { background: #159a53; }
+    .btn-reset { background: #d0342c; margin-left: 10px; }
+    .btn-reset:active { background: #a12a24; }
   </style>
 </head>
 <body>
@@ -19,11 +22,14 @@
     <input type="number" step="0.001" id="goal-amount" />
     <label>Description / What for:</label>
     <textarea id="goal-desc" rows="2" placeholder="e.g. New camera"></textarea>
-    <button onclick="setGoal()">Set Goal</button>
-    <div id="status"></div>
+    <div>
+      <button class="btn btn-set" onclick="setGoal()">Set Goal</button>
+      <button class="btn btn-reset" onclick="resetGoal()">Reset progress</button>
+    </div>
+    <div id="status" style="margin-top:16px;"></div>
   </div>
   <script>
-    // Optional: load current goal if exists
+    // load current goal if exists
     fetch('/donation_goal').then(res => res.json()).then(goal => {
       if(goal.amount) document.getElementById('goal-amount').value = goal.amount;
       if(goal.desc) document.getElementById('goal-desc').value = goal.desc;
@@ -37,11 +43,21 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount, desc })
       })
-      .then(res => res.json())
-      .then(r => {
-        document.getElementById('status').innerText = r.status === "ok" ? "Saved!" : r.msg;
-      })
-      .catch(() => document.getElementById('status').innerText = "Error!");
+        .then(res => res.json())
+        .then(r => {
+          document.getElementById('status').innerText = r.status === "ok" ? "Saved!" : r.msg;
+        })
+        .catch(() => document.getElementById('status').innerText = "Error!");
+    }
+
+    function resetGoal() {
+      if(!confirm("Are you sure you want to reset the donation progress to 0?")) return;
+      fetch('/reset_donation_goal', { method: "POST" })
+        .then(res => res.json())
+        .then(r => {
+          document.getElementById('status').innerText = r.status === "reset" ? "Progress reset!" : "Error";
+        })
+        .catch(() => document.getElementById('status').innerText = "Error!");
     }
   </script>
 </body>
