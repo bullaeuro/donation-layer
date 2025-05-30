@@ -59,12 +59,12 @@ def monitor_wallet():
                 if memo and amount >= 1000000:
                     cleaned_memo = memo.strip()
 
-                    # --- Kluczowa poprawka: wyciągnij usera i message po pierwszym "says", pomiń "kwota SOL" i kropki ---
+                    # Extract username and message after first "says", skip SOL amount and dots.
                     match = re.split(r"\s*says\s*\.{0,}", cleaned_memo, maxsplit=1, flags=re.IGNORECASE)
                     if len(match) == 2:
                         user = match[0].strip(" .")
                         message_text = match[1].strip(" .")
-                        # Usuń kwotę, SOL i śmieci z usera (tylko na początku)
+                        # Remove SOL amount and garbage from username (only at the start)
                         user = re.sub(r"^[\d\.,\s]*SOL[\s\.,]*", "", user, flags=re.IGNORECASE)
                         user = user.strip(" .")
                     else:
@@ -86,7 +86,7 @@ def monitor_wallet():
                         print("❌ Failed to save TTS:", e)
                         continue
 
-                    # Zapisz ostatni donation do latest.json (to obsługuje frontend)
+                    # Save the last donation to latest.json (used by the frontend)
                     with open(LATEST_JSON, "w", encoding="utf-8") as f:
                         json.dump({"filename": filename, "text": tts_text}, f, ensure_ascii=False)
 
@@ -114,7 +114,7 @@ def latest_donation():
 def home():
     return send_from_directory("static", "donation_player.html")
 
-# ---- POPRAWIONY ENDPOINT /donations ----
+# ---- IMPROVED /donations ENDPOINT ----
 @app.route('/donations')
 def donations():
     donations = []
@@ -123,10 +123,10 @@ def donations():
             if not filename.endswith('.mp3'):
                 continue
             name = filename[:-4]
-            # Akceptuj TYLKO pliki z nazwą w formacie {amount}_SOL_{user}_says_{message}_{timestamp}.mp3
+            # Accept ONLY files matching {amount}_SOL_{user}_says_{message}_{timestamp}.mp3
             match = re.match(r"^([0-9.]+)_SOL_(.+)_says_(.+)_(\d+)$", name)
             if not match:
-                continue  # pomiń niepoprawne pliki!
+                continue
             sol_amount = match.group(1)
             user = match.group(2).replace('_', ' ')
             message = match.group(3).replace('_', ' ')
@@ -142,9 +142,9 @@ def donations():
                 "date": date_str,
             })
     return jsonify(donations)
-# ---- KONIEC POPRAWIONEGO ENDPOINTU ----
+# ---- END IMPROVED ENDPOINT ----
 
-# ---- ENDPOINT DO USUWANIA WSZYSTKICH MP3 ----
+# ---- ENDPOINT TO DELETE ALL MP3s ----
 @app.route('/delete_all_mp3')
 def delete_all_mp3():
     import glob
@@ -152,9 +152,10 @@ def delete_all_mp3():
     for f in files:
         os.remove(f)
     return jsonify({"status": "deleted", "count": len(files)})
-# ---- KONIEC ENDPOINTU ----
+# ---- END DELETE ENDPOINT ----
 
 if __name__ == "__main__":
+    # Always run monitor_wallet only once (no matter debug/reloader state)
     Thread(target=monitor_wallet, daemon=True).start()
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=False)
