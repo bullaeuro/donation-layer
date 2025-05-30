@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Set Donation Goal</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    body { background: #181818; color: #fff; font-family: sans-serif; padding: 50px; }
+    .goal-box { max-width: 400px; margin:auto; background:rgba(255,255,255,0.08); border-radius:16px; padding:32px; }
+    input, textarea { width: 100%; margin-top: 10px; margin-bottom: 20px; border-radius: 8px; border: none; padding: 10px; font-size: 18px;}
+    button { padding: 12px 24px; font-size: 20px; border-radius: 8px; background: #21d07a; color: #fff; border: none; cursor:pointer;}
+    button:active { background:#159a53; }
+  </style>
+</head>
+<body>
+  <div class="goal-box">
+    <h2>Set Donation Goal</h2>
+    <label>Goal Amount (SOL):</label>
+    <input type="number" step="0.001" id="goal-amount" />
+    <label>Description / What for:</label>
+    <textarea id="goal-desc" rows="2" placeholder="e.g. New camera"></textarea>
+    <button onclick="setGoal()">Set Goal</button>
+    <div id="status"></div>
+  </div>
+  <script>
+    // Optional: load current goal if exists
+    fetch('/donation_goal').then(res => res.json()).then(goal => {
+      if(goal.amount) document.getElementById('goal-amount').value = goal.amount;
+      if(goal.desc) document.getElementById('goal-desc').value = goal.desc;
+    });
+
+    function setGoal() {
+      const amount = document.getElementById('goal-amount').value;
+      const desc = document.getElementById('goal-desc').value;
+      fetch('/donation_goal', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, desc })
+      })
+      .then(res => res.json())
+      .then(r => {
+        document.getElementById('status').innerText = r.status === "ok" ? "Saved!" : r.msg;
+      })
+      .catch(() => document.getElementById('status').innerText = "Error!");
+    }
+  </script>
+</body>
+</html>

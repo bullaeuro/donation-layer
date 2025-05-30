@@ -3,7 +3,7 @@ import time
 import re
 import json
 import datetime
-from flask import Flask, send_from_directory, jsonify
+from flask import Flask, send_from_directory, jsonify, request   # <-- dopisz 'request' tutaj!
 from flask_cors import CORS
 from gtts import gTTS
 from solana.rpc.api import Client
@@ -16,6 +16,7 @@ CORS(app)
 SOUNDS_DIR = os.path.join("static", "sounds")
 os.makedirs(SOUNDS_DIR, exist_ok=True)
 LATEST_JSON = os.path.join(SOUNDS_DIR, "latest.json")
+GOAL_JSON = os.path.join("static", "goal.json")  # <-- tutaj dodaj
 
 WALLET_ADDRESS = Pubkey.from_string("C4DxRkRkFYrNRrM7v1gySrFNonBhKjHM4Cp7YYNtruYo")
 client = Client("https://mainnet.helius-rpc.com/?api-key=e47fb6f4-d046-4ef2-af41-85617d529986")
@@ -153,6 +154,26 @@ def delete_all_mp3():
         os.remove(f)
     return jsonify({"status": "deleted", "count": len(files)})
 # ---- END DELETE ENDPOINT ----
+
+# ---- DONATION GOAL ENDPOINT (NEW) ----
+@app.route('/donation_goal', methods=['GET', 'POST'])
+def donation_goal():
+    if request.method == 'POST':
+        data = request.json
+        try:
+            goal_amount = float(data.get("amount", 0))
+            goal_desc = data.get("desc", "")
+        except Exception:
+            return jsonify({"status": "error", "msg": "Invalid input"}), 400
+        with open(GOAL_JSON, "w", encoding="utf-8") as f:
+            json.dump({"amount": goal_amount, "desc": goal_desc}, f, ensure_ascii=False)
+        return jsonify({"status": "ok"})
+    else:
+        if os.path.exists(GOAL_JSON):
+            with open(GOAL_JSON, "r", encoding="utf-8") as f:
+                return jsonify(json.load(f))
+        return jsonify({"amount": 0, "desc": ""})
+# ---- END DONATION GOAL ENDPOINT ----
 
 if __name__ == "__main__":
     # Always run monitor_wallet only once (no matter debug/reloader state)

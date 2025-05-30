@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Donation Goal Progress</title>
+  <style>
+    body { background: transparent; margin: 0; padding: 0; font-family: sans-serif; }
+    .goal-bar-bg {
+      width: 800px; max-width: 90vw; height: 40px;
+      background: #2b2b2b;
+      border-radius: 20px;
+      overflow: hidden;
+      margin: 50px auto 0 auto;
+      box-shadow: 0 2px 10px #000a;
+      border: 2px solid #222;
+      position: relative;
+    }
+    .goal-bar-fill {
+      background: linear-gradient(90deg, #21d07a, #17c6e0);
+      height: 100%; width: 0%; transition: width 0.5s;
+      border-radius: 20px 0 0 20px;
+    }
+    .goal-text {
+      position: absolute; width:100%; top:0; left:0; height:100%;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 20px; font-weight: bold; letter-spacing: 1px;
+      text-shadow: 1px 1px 6px #000;
+      pointer-events:none;
+      user-select:none;
+    }
+  </style>
+</head>
+<body>
+  <div class="goal-bar-bg" style="position:relative;">
+    <div class="goal-bar-fill" id="fill"></div>
+    <div class="goal-text" id="goal-text"></div>
+  </div>
+  <script>
+    let currentGoal = {amount:0,desc:""};
+    let currentSum = 0;
+
+    async function updateGoal() {
+      // Get goal
+      const g = await fetch('/donation_goal').then(res=>res.json());
+      currentGoal = g;
+
+      // Get donations
+      const d = await fetch('/donations').then(res=>res.json());
+      let sum = 0;
+      d.forEach(dd => {
+        if(dd.amount) sum += parseFloat(dd.amount);
+      });
+      currentSum = sum;
+
+      // Calculate progress
+      let fill = document.getElementById('fill');
+      let text = document.getElementById('goal-text');
+      let percent = 0;
+      if(currentGoal.amount > 0) {
+        percent = Math.min(100, Math.round(100*currentSum/currentGoal.amount));
+      }
+      fill.style.width = percent+"%";
+      text.textContent = `${currentSum.toFixed(3)} / ${currentGoal.amount} SOL${currentGoal.desc?(" for "+currentGoal.desc):""}`;
+    }
+
+    updateGoal();
+    setInterval(updateGoal, 5000); // update every 5 seconds
+  </script>
+</body>
+</html>
