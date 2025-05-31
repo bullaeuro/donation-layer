@@ -18,7 +18,7 @@ os.makedirs(SOUNDS_DIR, exist_ok=True)
 LATEST_JSON = os.path.join(SOUNDS_DIR, "latest.json")
 GOAL_JSON = os.path.join("static", "goal.json")
 
-WALLET_ADDRESS = Pubkey.from_string("C4DxRkRkFYrNRrM7v1gySrFNonBhKjHM4Cp7YYNtruYo")
+WALLET_ADDRESS = Pubkey.from_string("B8ybwRgedQSXCRVqqAu2bgQLfkggE4Noee7MRStu4aMb")
 client = Client("https://mainnet.helius-rpc.com/?api-key=e47fb6f4-d046-4ef2-af41-85617d529986")
 seen_signatures = set()
 
@@ -58,7 +58,7 @@ def monitor_wallet():
                                 except:
                                     amount = 0
 
-                if memo and amount >= 1000000:
+                if memo and amount >= 30000000:
                     cleaned_memo = memo.strip()
 
                     # extract username and message after first "says"
