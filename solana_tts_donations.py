@@ -58,7 +58,7 @@ def monitor_wallet():
                                 except:
                                     amount = 0
 
-                if memo and amount >= 30000000:
+                if memo and amount >= 3000000:
                     cleaned_memo = memo.strip()
 
                     # extract username and message after first "says"
